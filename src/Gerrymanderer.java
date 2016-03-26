@@ -7,8 +7,29 @@ public class Gerrymanderer {
 	
 	public static void main(String[] args) {
 		
-		//ArrayList<ArrayList<Double>> getSubsetsOfSizeK(Set<Double> supports, int k)
+		int numSupports = 10;
+		Gerrymanderer gerry = new Gerrymanderer();
+		SimplexPDF f = new SimplexPDF(numSupports);
+		f.generateRandom(numSupports);
+		SimplexPDF tempG = f, g = f;
+		double maxDistortion = 1.;
+		for (int i = 1; i < numSupports; i++) {
+			tempG = gerry.solveDiscrete(f, i);
+			// note: if I want to go through every subset
+			// I should write a different method for it,
+			// as with this way it is really inefficient
+			// (getSubsetOfSizeK etc repeats work)
+			double expectedDistortionOfG = tempG.getExpectedDistortion();
+			if (expectedDistortionOfG > maxDistortion) {
+				maxDistortion = expectedDistortionOfG;
+				g = tempG;
+			}
+		}
 		
+		System.out.println("Original PDF:\n" + f);
+		System.out.println("Gerrymandered PDF:\n" + g);
+		
+		/*
 		int pdfSupportSize = 7;
 		int partySupportSize1 = 3;
 		int partySupportSize2 = 6; // > partySupportSize1
@@ -32,7 +53,7 @@ public class Gerrymanderer {
 			System.out.println("Original pdf\n" + eff);
 			System.out.println("Gerrymandered pdf with " + partySupportSize1 + " parties\n" + gee1);
 			System.out.println("Gerrymandered pdf with " + partySupportSize2 + " parties\n" + gee2);
-		}
+		}*/
 	}
 	
 	/**
@@ -52,7 +73,7 @@ public class Gerrymanderer {
 		Set<Set<Double>> subsetsOfF = getSubsetsOfSizeK(f.getPDF().keySet(), numParties);
 		for (Set<Double> discretePartyPoints : subsetsOfF) {
 			this.setPartyPoints(discretePartyPoints);
-			SimplexPDF g = gerrymander(f);
+			SimplexPDF g = this.gerrymander(f);
 			if (g.getExpectedDistortion() > bestParties.getExpectedDistortion()) {
 				bestParties = g;
 			}
