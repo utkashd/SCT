@@ -7,53 +7,15 @@ public class Gerrymanderer {
 	
 	public static void main(String[] args) {
 		
-		int numSupports = 10;
+		int numSupports = 13;
 		Gerrymanderer gerry = new Gerrymanderer();
 		SimplexPDF f = new SimplexPDF(numSupports);
 		f.generateRandom(numSupports);
-		SimplexPDF tempG = f, g = f;
-		double maxDistortion = 1.;
-		for (int i = 1; i < numSupports; i++) {
-			tempG = gerry.solveDiscrete(f, i);
-			// note: if I want to go through every subset
-			// I should write a different method for it,
-			// as with this way it is really inefficient
-			// (getSubsetOfSizeK etc repeats work)
-			double expectedDistortionOfG = tempG.getExpectedDistortion();
-			if (expectedDistortionOfG > maxDistortion) {
-				maxDistortion = expectedDistortionOfG;
-				g = tempG;
-			}
-		}
+		SimplexPDF g = gerry.solveDiscrete(f);
 		
 		System.out.println("Original PDF:\n" + f);
 		System.out.println("Gerrymandered PDF:\n" + g);
 		
-		/*
-		int pdfSupportSize = 7;
-		int partySupportSize1 = 3;
-		int partySupportSize2 = 6; // > partySupportSize1
-		
-		Gerrymanderer gerry = new Gerrymanderer();
-		double maxDist = 1.;
-		SimplexPDF eff = null, gee1 = null, gee2 = null;
-		for (int i = 0; i < 50; i++) {
-			SimplexPDF f = new SimplexPDF(pdfSupportSize);
-			SimplexPDF g1 = gerry.solveDiscrete(f, partySupportSize1);
-			SimplexPDF g2 = gerry.solveDiscrete(f, partySupportSize2);
-			if (g1.getExpectedDistortion() < g2.getExpectedDistortion() && !g2.getPDF().values().contains(0.0) && g1.getSupportSize() != pdfSupportSize && g2.getSupportSize() != pdfSupportSize) {
-				if (g2.getExpectedDistortion() > maxDist) {
-					eff = f;
-					gee1 = g1;
-					gee2 = g2;
-				}
-			}
-		}
-		if (eff != null) {
-			System.out.println("Original pdf\n" + eff);
-			System.out.println("Gerrymandered pdf with " + partySupportSize1 + " parties\n" + gee1);
-			System.out.println("Gerrymandered pdf with " + partySupportSize2 + " parties\n" + gee2);
-		}*/
 	}
 	
 	/**
@@ -68,17 +30,67 @@ public class Gerrymanderer {
 		this.partyPoints = new ArrayList<Double>();
 	}
 	
-	SimplexPDF solveDiscrete(SimplexPDF f, int numParties) {
+	SimplexPDF solveDiscrete(SimplexPDF f) {
 		SimplexPDF bestParties = f;
-		Set<Set<Double>> subsetsOfF = getSubsetsOfSizeK(f.getPDF().keySet(), numParties);
-		for (Set<Double> discretePartyPoints : subsetsOfF) {
+		SimplexPDF g = null;
+		double bestExpectedDistortion = f.getExpectedDistortion();
+		double gExpectedDistortion = bestExpectedDistortion;
+		Set<Set<Double>> subsetsOfF = getSubsets(f.getPDF().keySet());
+		Set<Set<Double>> subsetsOfFOfSizeGEQ3 = new HashSet<Set<Double>>(subsetsOfF);
+		for (Set<Double> subset : subsetsOfF) {
+			if (subset.size() <= 2) {
+				subsetsOfFOfSizeGEQ3.remove(subset);
+			}
+		}
+		for (Set<Double> discretePartyPoints : subsetsOfFOfSizeGEQ3) {
 			this.setPartyPoints(discretePartyPoints);
-			SimplexPDF g = this.gerrymander(f);
-			if (g.getExpectedDistortion() > bestParties.getExpectedDistortion()) {
+			g = this.gerrymander(f);
+			gExpectedDistortion = g.getExpectedDistortion();
+			if (gExpectedDistortion > bestExpectedDistortion) {
 				bestParties = g;
+				bestExpectedDistortion = gExpectedDistortion;
 			}
 		}
 		return bestParties;
+	}
+	
+	SimplexPDF solveDiscrete(SimplexPDF f, int numParties) {
+		SimplexPDF bestParties = f;
+		SimplexPDF g = null;
+		double bestExpectedDistortion = f.getExpectedDistortion();
+		double gExpectedDistortion = bestExpectedDistortion;
+		Set<Set<Double>> subsetsOfFOfSizeK = getSubsetsOfSizeK(f.getPDF().keySet(), numParties);
+		for (Set<Double> discretePartyPoints : subsetsOfFOfSizeK) {
+			this.setPartyPoints(discretePartyPoints);
+			g = this.gerrymander(f);
+			gExpectedDistortion = g.getExpectedDistortion();
+			if (gExpectedDistortion > bestExpectedDistortion) {
+				bestParties = g;
+				bestExpectedDistortion = gExpectedDistortion;
+			}
+		}
+		return bestParties;
+	}
+	
+	/**
+	 * Uses bitwise masking to return the power set of a given set. Includes all 2^n sets
+	 * @param supports The set to get all subsets of
+	 * @return The power set of the parameter supports
+	 */
+	private Set<Set<Double>> getSubsets(Set<Double> supports) {
+		ArrayList<Double> orderedSupports = new ArrayList<Double>(supports);
+		Set<Set<Double>> subsets = new HashSet<Set<Double>>();
+		for (int i = 0; i < (1 << supports.size()); i++) {
+			Set<Double> subset = new HashSet<Double>();
+			// use bitmask to determine which elements are put in this subset
+			for (int j = 0; j < supports.size(); j++) {
+				if (((i >> j) & 1) == 1) {
+					subset.add(orderedSupports.get(j));
+				}
+			}
+			subsets.add(subset);
+		}
+		return subsets;
 	}
 	
 	private Set<Set<Double>> getSubsetsOfSizeK(Set<Double> supports, int k) {
@@ -87,7 +99,7 @@ public class Gerrymanderer {
 	
 	private Set<Set<Double>> getSubsetsOfSizeK(Set<Double> elements, int k, Set<Set<Double>> listOfSubsets) {
 		if (k == 0) {
-			// return the empty set containing the empty set
+			// return the set containing the empty set
 			listOfSubsets.add(new HashSet<Double>());
 			return listOfSubsets;
 		}
