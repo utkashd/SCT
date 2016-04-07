@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -7,14 +8,54 @@ public class Gerrymanderer {
 	
 	public static void main(String[] args) {
 		
-		int numSupports = 13;
+		int maxFSupportSize = 12; // incrementing this makes the simulation take much longer
+		int numOfSims = 1000; // incrementing this will not make the simulation much longer
+		int numSupports = (int) (Math.random()*(maxFSupportSize-3+1)) + 3;
+		SimplexPDF f = new SimplexPDF(numSupports);
+		Gerrymanderer gerry = new Gerrymanderer();
+		SimplexPDF g = gerry.solveDiscreteBF(f);
+		HashMap<Integer, HashMap<Integer, Integer>> numSupportsToMapOfCounts = new HashMap<Integer, HashMap<Integer, Integer>>();
+		for (int i = 3; i <= maxFSupportSize; i++) {
+			HashMap<Integer, Integer> gSizeToFrequency = new HashMap<Integer, Integer>();
+			for (int j = 3; j <= i; j++) {
+				gSizeToFrequency.put(j, 0);
+			}
+			numSupportsToMapOfCounts.put(i, gSizeToFrequency);
+		}
+		numSupportsToMapOfCounts.get(f.getSupportSize()).put(g.getSupportSize(), numSupportsToMapOfCounts.get(f.getSupportSize()).get(g.getSupportSize()) + 1);
+		for (int i = 0; i < numOfSims-1; i++) { // because we've already done one sim
+			numSupports = (int) (Math.random()*(maxFSupportSize-3+1)) + 3;
+			f.generateRandom(numSupports);
+			if (f.getSupportSize() == 3) {
+				// ignore it, it doesn't provide any useful information
+			} else {
+				g = gerry.solveDiscreteBF(f);
+				numSupportsToMapOfCounts.get(f.getSupportSize()).put(g.getSupportSize(), numSupportsToMapOfCounts.get(f.getSupportSize()).get(g.getSupportSize()) + 1);
+			
+			}
+		}
+		for (int i = 4; i <= maxFSupportSize; i++) { // from 4, because we're ignoring f of size 3
+			System.out.print(i);
+			for (int j = 3; j <= i; j++) {
+				System.out.print("\t");
+				if (numSupportsToMapOfCounts.get(i).get(j) > 0) {
+					System.out.print(j + ":" + numSupportsToMapOfCounts.get(i).get(j));
+				}
+			}
+			System.out.println();
+		}
+		
+		/*int numSupports = 12;
 		Gerrymanderer gerry = new Gerrymanderer();
 		SimplexPDF f = new SimplexPDF(numSupports);
-		f.generateRandom(numSupports);
-		SimplexPDF g = gerry.solveDiscrete(f);
-		
+		SimplexPDF g = gerry.solveDiscreteBF(f);
+		while (g.getPDF().size() <= 7 || g.getExpectedDistortion() - 1 < 0.01) {
+			f.generateRandom(numSupports);
+			g = gerry.solveDiscreteBF(f);
+		}
 		System.out.println("Original PDF:\n" + f);
-		System.out.println("Gerrymandered PDF:\n" + g);
+		System.out.println("PDF median: " + f.getMedian());
+		System.out.println("\nGerrymandered PDF:\n" + g);*/
 		
 	}
 	
@@ -30,7 +71,13 @@ public class Gerrymanderer {
 		this.partyPoints = new ArrayList<Double>();
 	}
 	
-	SimplexPDF solveDiscrete(SimplexPDF f) {
+	/*SimplexPDF solveDiscrete(SimplexPDF f) {
+		
+		
+		
+	}*/
+	
+	SimplexPDF solveDiscreteBF(SimplexPDF f) {
 		SimplexPDF bestParties = f;
 		SimplexPDF g = null;
 		double bestExpectedDistortion = f.getExpectedDistortion();
@@ -54,7 +101,7 @@ public class Gerrymanderer {
 		return bestParties;
 	}
 	
-	SimplexPDF solveDiscrete(SimplexPDF f, int numParties) {
+	SimplexPDF solveDiscreteBF(SimplexPDF f, int numParties) {
 		SimplexPDF bestParties = f;
 		SimplexPDF g = null;
 		double bestExpectedDistortion = f.getExpectedDistortion();
