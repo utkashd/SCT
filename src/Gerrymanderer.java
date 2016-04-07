@@ -8,7 +8,7 @@ public class Gerrymanderer {
 	
 	public static void main(String[] args) {
 		
-		int maxFSupportSize = 12; // incrementing this makes the simulation take much longer
+		int maxFSupportSize = 10; // incrementing this makes the simulation take much longer
 		int numOfSims = 1000; // incrementing this will not make the simulation much longer
 		int numSupports = (int) (Math.random()*(maxFSupportSize-3+1)) + 3;
 		SimplexPDF f = new SimplexPDF(numSupports);
@@ -25,10 +25,10 @@ public class Gerrymanderer {
 		numSupportsToMapOfCounts.get(f.getSupportSize()).put(g.getSupportSize(), numSupportsToMapOfCounts.get(f.getSupportSize()).get(g.getSupportSize()) + 1);
 		for (int i = 0; i < numOfSims-1; i++) { // because we've already done one sim
 			numSupports = (int) (Math.random()*(maxFSupportSize-3+1)) + 3;
-			f.generateRandom(numSupports);
-			if (f.getSupportSize() == 3) {
+			if (numSupports == 3) {
 				// ignore it, it doesn't provide any useful information
 			} else {
+				f.generateRandom(numSupports);
 				g = gerry.solveDiscreteBF(f);
 				numSupportsToMapOfCounts.get(f.getSupportSize()).put(g.getSupportSize(), numSupportsToMapOfCounts.get(f.getSupportSize()).get(g.getSupportSize()) + 1);
 			
