@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.TreeMap;
 
 public class SimplexPDF {
@@ -51,17 +53,6 @@ public class SimplexPDF {
 		return toPrint + "\n";
 	}
 	
-	public SimplexPDF normalize() { // TODO fix
-		if (this.supports.lastKey() != 1. || this.supports.firstKey() != 0.) {
-			TreeMap<Double, Double> newSupports = new TreeMap<Double, Double>();
-			for (double supportPoint : this.supports.keySet()) {
-				newSupports.put((supportPoint-this.supports.firstKey())/(this.supports.lastKey() - this.supports.firstKey()), this.supports.get(supportPoint));
-			}
-			this.supports = newSupports;
-		}
-		return this;
-	}
-	
 	public double getMedian() {
 		double cumulativeProbability = 0.;
 		for (double supportPoint : this.supports.keySet()) {
@@ -110,26 +101,58 @@ public class SimplexPDF {
 		}
 	}
 	
+	/**
+	 * Generates a random pdf according to the method written below
+	 */
 	SimplexPDF generateRandom(int numSupports) {
+		// generate supports, since it should be independent of the simplex sampling method
+		this.generateSupports(numSupports);
+		// scale the interval out if necessary, since it the space is easier to analyzing assuming the min support is 0 and the max support is 1
+		this.normalize();
+		// sample probabilities from the simplex
+		this.generateRandomUniformInterval();
+		return this;
+	}
+	
+	/**
+	 * Generates support points for the pdf, but does not assign valid probabilities to them
+	 */
+	void generateSupports(int numSupports) {
 		this.supports.clear();
-		double initProbability = Math.random();
-		while (initProbability == 0.) {
-			initProbability = Math.random();
-		}
-		this.supports.put(0., initProbability);
-		initProbability = Math.random();
-		while (initProbability == 0.) {
-			initProbability = Math.random();
-		}
-		this.supports.put(1., initProbability);
-		double totalProbability = this.getProbability(0) + this.getProbability(1);
-		for (int i = 0; i < numSupports-2; i++) {
+		for (int i = 0; i < numSupports; i++) {
 			double supportPoint = Math.random();
-			while (supportPoint == 0.) {
+			while (this.supports.keySet().contains(supportPoint)) {
 				supportPoint = Math.random();
 			}
+			this.supports.put(supportPoint, 0.);
+		}
+	}
+
+	/**
+	 * scales a distribution with support points at x1, x2, ..., xn to 0, ..., 1
+	 */
+	public SimplexPDF normalize() {
+		double supportMin = Collections.min(this.supports.keySet());
+		double supportMax = Collections.max(this.supports.keySet());
+		if (supportMin == 0. && supportMax == 1.) {
+			return this;
+		}
+		TreeMap<Double, Double> newSupports = new TreeMap<Double, Double>();
+		for (double supportPoint : this.supports.keySet()) {
+			newSupports.put((supportPoint-supportMin)/(supportMax-supportMin), this.supports.get(supportPoint));
+		}
+		this.supports = newSupports;
+		return this;
+	}
+
+	/**
+	 * Completes generation of the random pdf using "the" naive approach, after supports are initialized and normalized
+	 */
+	SimplexPDF generateRandomNormal() {
+		double totalProbability = 0.;
+		for (double supportPoint : this.supports.keySet()) {
 			double probability = Math.random();
-			while (probability == 0.) {
+			while (probability == 0.) { // strictly > 0 probability
 				probability = Math.random();
 			}
 			this.supports.put(supportPoint, probability);
@@ -138,6 +161,57 @@ public class SimplexPDF {
 		// normalize the probabilities so they sum to 1
 		for (double supportPoint : this.supports.keySet()) {
 			this.supports.put(supportPoint, this.supports.get(supportPoint)/totalProbability);
+		}
+		return this;
+	}
+
+	/**
+	 * Generates a random pdf using normalized hypercube sampling (drawing from exponential distribution)
+	 * @precondition this.generateSupports and this.normalize are called, or the keys for this.supports are defined as desired
+	 * @param numSupports The number of supports
+	 * @return this SimplexPDF
+	 */
+	SimplexPDF generateRandomHypercubeSampling() {
+		double totalProbability = 0.;
+		double prob = 0.;
+		for (double supportPoint : this.supports.keySet()) {
+			prob = Math.random();
+			while (prob == 0.) {
+				prob = Math.random();
+			}
+			prob = (-1) * Math.log(prob);
+			this.supports.put(supportPoint, prob);
+			totalProbability = totalProbability + prob;
+		}
+		for (double supportPoint : this.supports.keySet()) {
+			this.supports.put(supportPoint, this.supports.get(supportPoint)/totalProbability);
+		}
+		return this;
+	}
+
+	/**
+	 * Generates a random pdf using Bayesian bootstrap replication
+	 * @precondition this.generateSupports and this.normalize are called, or the keys for this.supports are defined as desired
+	 * @param numSupports The number of supports
+	 * @return this SimplexPDF
+	 */
+	SimplexPDF generateRandomUniformInterval() {
+		ArrayList<Double> intervals = new ArrayList<Double>();
+		intervals.add(0.);
+		intervals.add(1.);
+		double ip = 0.;
+		for (int i = 0; i < this.supports.size()-1; i++) {
+			ip = Math.random();
+			while (ip == 0. || intervals.contains(ip)) { // strictly greater than 0.0
+				ip = Math.random();
+			}
+			intervals.add(ip);
+		}
+		Collections.sort(intervals);
+		int i = 0;
+		for (double supportPoint : this.supports.keySet()) {
+			this.supports.put(supportPoint, intervals.get(i+1) - intervals.get(i));
+			i++;
 		}
 		return this;
 	}

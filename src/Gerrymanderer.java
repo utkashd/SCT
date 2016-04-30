@@ -8,9 +8,9 @@ public class Gerrymanderer {
 	
 	public static void main(String[] args) {
 		
-		int minFSupportSize = 15; // incrementing this makes the simulation take much longer
-		int maxFSupportSize = 15; // incrementing this makes the simulation take much longer
-		int numOfSims = 1000; // incrementing this will not make the simulation much longer
+		int minFSupportSize = 4; // incrementing this makes the simulation take much longer
+		int maxFSupportSize = 10; // incrementing this makes the simulation take much longer
+		int numOfSims = 100000; // incrementing this will not make the simulation much longer
 		int numSupports = (int) (Math.random()*(maxFSupportSize-minFSupportSize+1)) + minFSupportSize;
 		SimplexPDF f = new SimplexPDF(numSupports);
 		Gerrymanderer gerry = new Gerrymanderer();
