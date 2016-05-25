@@ -1,82 +1,49 @@
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
 public class Gerrymanderer {
-	
+
 	public static void main(String[] args) {
-		
-		int minFSupportSize = 4; // incrementing this makes the simulation take much longer
-		int maxFSupportSize = 10; // incrementing this makes the simulation take much longer
-		int numOfSims = 100000; // incrementing this will not make the simulation much longer
-		int numSupports = (int) (Math.random()*(maxFSupportSize-minFSupportSize+1)) + minFSupportSize;
-		SimplexPDF f = new SimplexPDF(numSupports);
-		Gerrymanderer gerry = new Gerrymanderer();
-		SimplexPDF g = gerry.solveDiscreteBF(f);
-		HashMap<Integer, HashMap<Integer, Integer>> numSupportsToMapOfCounts = new HashMap<Integer, HashMap<Integer, Integer>>();
-		for (int i = 3; i <= maxFSupportSize; i++) {
-			HashMap<Integer, Integer> gSizeToFrequency = new HashMap<Integer, Integer>();
-			for (int j = 3; j <= i; j++) {
-				gSizeToFrequency.put(j, 0);
-			}
-			numSupportsToMapOfCounts.put(i, gSizeToFrequency);
-		}
-		numSupportsToMapOfCounts.get(f.getSupportSize()).put(g.getSupportSize(), numSupportsToMapOfCounts.get(f.getSupportSize()).get(g.getSupportSize()) + 1);
-		for (int i = 0; i < numOfSims-1; i++) { // because we've already done one sim
-			numSupports = (int) (Math.random()*(maxFSupportSize-minFSupportSize+1)) + minFSupportSize;
-			if (numSupports == 3) {
-				// ignore it, it doesn't provide any useful information
-			} else {
-				f.generateRandom(numSupports);
-				g = gerry.solveDiscreteBF(f);
-				numSupportsToMapOfCounts.get(f.getSupportSize()).put(g.getSupportSize(), numSupportsToMapOfCounts.get(f.getSupportSize()).get(g.getSupportSize()) + 1);
-			}
-		}
-		for (int i = minFSupportSize; i <= maxFSupportSize; i++) { // from 4, because we're ignoring f of size 3
-			System.out.print(i);
-			for (int j = 3; j <= i; j++) {
-				System.out.print("\t");
-				if (numSupportsToMapOfCounts.get(i).get(j) > 0) {
-					System.out.print(j + ":" + numSupportsToMapOfCounts.get(i).get(j));
-				}
-			}
-			System.out.println();
-		}
-		
-		/*int numSupports = 12;
-		Gerrymanderer gerry = new Gerrymanderer();
-		SimplexPDF f = new SimplexPDF(numSupports);
-		SimplexPDF g = gerry.solveDiscreteBF(f);
-		while (g.getPDF().size() <= 7 || g.getExpectedDistortion() - 1 < 0.01) {
+
+		int numSupports = 5;
+		SimplexPDF f = new SimplexPDF();
+		f.generateRandom(numSupports);
+		Gerrymanderer ger = new Gerrymanderer();
+		SimplexPDF g = ger.solveDiscreteBF(f);
+		while (f.getExpectedDistortion() != 1 || g.getSupportSize() != 4 || g.getExpectedDistortion() - 1 < 0.10) {
 			f.generateRandom(numSupports);
-			g = gerry.solveDiscreteBF(f);
+			g = ger.solveDiscreteBF(f);
 		}
-		System.out.println("Original PDF:\n" + f);
-		System.out.println("PDF median: " + f.getMedian());
-		System.out.println("\nGerrymandered PDF:\n" + g);*/
-		
+
+		System.out.println("Original:\n" + f);
+		System.out.println("Gerrymandered:\n" + g);
+		Set<SimplexPDF> fGerriedSize3 = ger.getGerriedOfSizeK(f, 3);
+		int i = 0;
+		for (SimplexPDF gee : fGerriedSize3) {
+			i++;
+			System.out.println("Subset of size 3 #" + i + ":\n" + gee);
+		}
+
 	}
-	
+
 	/**
 	 * An ordered list of real-valued points in [0, 1] from which parties will be generated
 	 */
 	private ArrayList<Double> partyPoints;
-	
+
 	/**
 	 * Constructs a Gerrymanderer instance with no default for this.partyPoints
 	 */
 	Gerrymanderer() {
 		this.partyPoints = new ArrayList<Double>();
 	}
-	
+
 	/*SimplexPDF solveDiscrete(SimplexPDF f) {
-		
-		
-		
+
 	}*/
-	
+
 	SimplexPDF solveDiscreteBF(SimplexPDF f) {
 		SimplexPDF bestParties = f;
 		SimplexPDF g = null;
@@ -100,7 +67,7 @@ public class Gerrymanderer {
 		}
 		return bestParties;
 	}
-	
+
 	SimplexPDF solveDiscreteBF(SimplexPDF f, int numParties) {
 		SimplexPDF bestParties = f;
 		SimplexPDF g = null;
@@ -118,7 +85,7 @@ public class Gerrymanderer {
 		}
 		return bestParties;
 	}
-	
+
 	/**
 	 * Uses bitwise masking to return the power set of a given set. Includes all 2^n sets
 	 * @param supports The set to get all subsets of
@@ -139,21 +106,21 @@ public class Gerrymanderer {
 		}
 		return subsets;
 	}
-	
-	private Set<Set<Double>> getSubsetsOfSizeK(Set<Double> supports, int k) {
-		return this.getSubsetsOfSizeK(supports, k, new HashSet<Set<Double>>());
+
+	private <T> Set<Set<T>> getSubsetsOfSizeK(Set<T> supports, int k) {
+		return this.getSubsetsOfSizeK(supports, k, new HashSet<Set<T>>());
 	}
-	
-	private Set<Set<Double>> getSubsetsOfSizeK(Set<Double> elements, int k, Set<Set<Double>> listOfSubsets) {
+
+	private <T> Set<Set<T>> getSubsetsOfSizeK(Set<T> elements, int k, Set<Set<T>> listOfSubsets) {
 		if (k == 0) {
 			// return the set containing the empty set
-			listOfSubsets.add(new HashSet<Double>());
+			listOfSubsets.add(new HashSet<T>());
 			return listOfSubsets;
 		}
-		for (double el : elements) {
-			Set<Double> elementsMinusEl = new HashSet<Double>(elements);
+		for (T el : elements) {
+			Set<T> elementsMinusEl = new HashSet<T>(elements);
 			elementsMinusEl.remove(el);
-			for (Set<Double> subsetOfSizeKMinus1 : this.getSubsetsOfSizeK(elementsMinusEl, k-1, new HashSet<Set<Double>>())) {
+			for (Set<T> subsetOfSizeKMinus1 : this.getSubsetsOfSizeK(elementsMinusEl, k-1, new HashSet<Set<T>>())) {
 				subsetOfSizeKMinus1.add(el); // subsetOfSizeKMinus1 is now a subset of size k
 				listOfSubsets.add(subsetOfSizeKMinus1);
 			}
@@ -161,6 +128,17 @@ public class Gerrymanderer {
 		return listOfSubsets;
 	}
 	
+	Set<SimplexPDF> getGerriedOfSizeK(SimplexPDF f, int numSupports) {
+		// k = numSupports
+		Set<Set<Double>> setOfSetsOfPartyPoints = this.getSubsetsOfSizeK(f.getPDF().keySet(), numSupports);
+		Set<SimplexPDF> gerriedOfSizeK = new HashSet<SimplexPDF>();
+		for (Set<Double> setOfPartyPoints : setOfSetsOfPartyPoints) {
+			this.setPartyPoints(setOfPartyPoints);
+			gerriedOfSizeK.add(this.gerrymander(f));
+		}
+		return gerriedOfSizeK;
+	}
+
 	/**
 	 * Given a SimplexPDF f and a number of parties to gerrymander f, approximates the party selection that maximizes gerrymandered distortion and returns the corresponding gerrymandered SimplexPDF
 	 * @param f The SimplexPDF to gerrymander
@@ -178,7 +156,7 @@ public class Gerrymanderer {
 		}
 		return bestParties;
 	}
-	
+
 	/**
 	 * Given a SimplexPDF f, returns a gerrymandered version of f with the precondition that this.partyPoints has points
 	 * @param f The SimplexPDF to gerrymander
@@ -204,7 +182,7 @@ public class Gerrymanderer {
 		}
 		return g;
 	}
-	
+
 	/**
 	 * Populates this.partyPoints with numParties # of points chosen uniformly at random from unit 1-simplex
 	 * @param numParties The number of parties to create
@@ -222,7 +200,7 @@ public class Gerrymanderer {
 		Collections.sort(this.partyPoints);
 		return this.partyPoints;
 	}
-	
+
 	/**
 	 * Getter for this.partyPoints
 	 * @return this.partyPoints
@@ -230,7 +208,7 @@ public class Gerrymanderer {
 	ArrayList<Double> getPartyPoints() {
 		return this.partyPoints;
 	}
-	
+
 	/**
 	 * Setter for this.partypoints
 	 * @param new ArrayList<Double>(discretePartyPoints) The new value for this.partyPoints
@@ -239,5 +217,5 @@ public class Gerrymanderer {
 		this.partyPoints = new ArrayList<Double>(discretePartyPoints);
 		Collections.sort(this.partyPoints);
 	}
-	
+
 }
